@@ -30,6 +30,7 @@ class Wizard:
     data_augmentation_entity = DataAugmentationEntity()
     pretreatment_entity = PretreatmentEntity()
     extract_regex = ".*?(?=_)"
+    label_split = ""
     label_from = LabelFrom.FileName
 
     def __init__(self, parent: tk.Tk):
@@ -860,8 +861,11 @@ class Wizard:
         )
         current_project_name = self.comb_project_name.get()
         if len(current_project_name) > 0 and current_project_name not in self.project_names:
+            self.extract_regex = ".*?(?=_)"
+            self.label_from = LabelFrom.FileName
             self.sample_map[DatasetType.Directory][RunMode.Trains].delete(0, tk.END)
             self.sample_map[DatasetType.Directory][RunMode.Validation].delete(0, tk.END)
+            self.category_val.set("")
             if not current_project_name.endswith(suffix):
                 self.comb_project_name.insert(tk.END, suffix)
             self.current_project = self.comb_project_name.get()
@@ -1045,6 +1049,7 @@ class Wizard:
         self.comb_loss.set(model_conf.loss_func_param)
 
         self.extract_regex = model_conf.extract_regex
+        self.label_split = model_conf.label_split
         self.label_from = model_conf.label_from
 
         if isinstance(model_conf.category_param, list):
@@ -1052,6 +1057,7 @@ class Wizard:
             self.comb_category.set('CUSTOMIZED')
             self.category_val.set(json.dumps(model_conf.category_param, ensure_ascii=False))
         else:
+            self.category_val.set("")
             self.category_entry['state'] = tk.DISABLED
             self.comb_category.set(model_conf.category_param)
 
@@ -1079,12 +1085,14 @@ class Wizard:
         self.data_augmentation_entity.channel_swap = model_conf.da_channel_swap
         self.data_augmentation_entity.random_blank = model_conf.da_random_blank
         self.data_augmentation_entity.random_transition = model_conf.da_random_transition
+        self.data_augmentation_entity.random_captcha = model_conf.da_random_captcha
 
         self.pretreatment_entity.binaryzation = model_conf.pre_binaryzation
         self.pretreatment_entity.replace_transparent = model_conf.pre_replace_transparent
         self.pretreatment_entity.horizontal_stitching = model_conf.pre_horizontal_stitching
         self.pretreatment_entity.concat_frames = model_conf.pre_concat_frames
         self.pretreatment_entity.blend_frames = model_conf.pre_blend_frames
+        self.pretreatment_entity.exec_map = model_conf.pre_exec_map
 
         for dataset_validation in self.get_param(model_conf.validation_path, DatasetType.TFRecords, default=[]):
             self.dataset_validation_listbox.insert(tk.END, dataset_validation)
@@ -1133,7 +1141,7 @@ class Wizard:
             OutputSplit='',
             LabelFrom=self.label_from.value,
             ExtractRegex=self.extract_regex,
-            LabelSplit='',
+            LabelSplit=self.label_split,
             DatasetTrainsPath=self.dataset_value(
                 dataset_type=DatasetType.TFRecords, mode=RunMode.Trains
             ),
@@ -1170,11 +1178,13 @@ class Wizard:
             DA_ChannelSwap=self.data_augmentation_entity.channel_swap,
             DA_RandomBlank=self.data_augmentation_entity.random_blank,
             DA_RandomTransition=self.data_augmentation_entity.random_transition,
+            DA_RandomCaptcha=self.data_augmentation_entity.random_captcha,
             Pre_Binaryzation=self.pretreatment_entity.binaryzation,
             Pre_ReplaceTransparent=self.pretreatment_entity.replace_transparent,
             Pre_HorizontalStitching=self.pretreatment_entity.horizontal_stitching,
             Pre_ConcatFrames=self.pretreatment_entity.concat_frames,
             Pre_BlendFrames=self.pretreatment_entity.blend_frames,
+            Pre_ExecuteMap=self.pretreatment_entity.exec_map
         )
         model_conf.update()
         return model_conf

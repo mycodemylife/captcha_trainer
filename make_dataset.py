@@ -68,7 +68,9 @@ class DataSets:
                     if labels:
                         labels = labels.group()
                     else:
-                        raise NameError('invalid filename {}'.format(file_name))
+                        tf.logging.warning('invalid filename {}, ignored.'.format(file_name))
+                        continue
+                        # raise NameError('invalid filename {}'.format(file_name))
                     labels = labels.encode('utf-8')
 
                     example = self.input_to_tfrecords(image_data, labels)
@@ -221,6 +223,12 @@ class DataSets:
             elif self.model.label_from == LabelFrom.TXT:
 
                 train_label_file = os.path.join(os.path.dirname(trains_path[0]), "train.txt")
+
+                if not os.path.exists(train_label_file):
+                    msg("Train label file not found!")
+                    if callback:
+                        callback()
+                    return
 
                 with open(train_label_file, "r", encoding="utf8") as f:
                     sample_label_line = f.readlines()

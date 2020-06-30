@@ -13,6 +13,7 @@ from constants import RunMode
 from config import ModelConfig, LabelFrom, LossFunction
 from category import encode_maps, FULL_ANGLE_MAP
 from pretreatment import preprocessing
+from pretreatment import preprocessing_by_func
 from tools.gif_frames import concat_frames, blend_frame
 
 
@@ -33,7 +34,7 @@ class Encoder(object):
 
         path_or_stream = io.BytesIO(path_or_bytes) if isinstance(path_or_bytes, bytes) else path_or_bytes
         if not path_or_stream:
-            return "Picture is corrupted: {}".format( path_or_bytes)
+            return "Picture is corrupted: {}".format(path_or_bytes)
         try:
             pil_image = PIL.Image.open(path_or_stream)
         except OSError as e:
@@ -68,6 +69,11 @@ class Encoder(object):
         if isinstance(im, list):
             return None
 
+        im = preprocessing_by_func(
+            exec_map=self.model_conf.pre_exec_map,
+            src_arr=im
+        )
+
         if self.model_conf.image_channel == 1 and len(im.shape) == 3:
             if self.mode == RunMode.Trains:
                 im = cv2.cvtColor(im, cv2.COLOR_RGB2GRAY if bool(random.getrandbits(1)) else cv2.COLOR_BGR2GRAY)
@@ -78,6 +84,11 @@ class Encoder(object):
             image=im,
             binaryzation=self.model_conf.pre_binaryzation,
         )
+
+        if self.model_conf.pre_horizontal_stitching:
+            up_slice = im[0: int(size[1] / 2), 0: size[0]]
+            down_slice = im[int(size[1] / 2): size[1], 0: size[0]]
+            im = np.concatenate((up_slice, down_slice), axis=1)
 
         if self.mode == RunMode.Trains and bool(random.getrandbits(1)):
             im = preprocessing(

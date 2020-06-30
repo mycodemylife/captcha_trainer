@@ -21,7 +21,7 @@ PATH_SPLIT = "/"
 MODEL_CONFIG_NAME = "model.yaml"
 IGNORE_FILES = ['.DS_Store']
 
-CORE_VERSION = '20200530'
+CORE_VERSION = '20200626'
 
 NETWORK_MAP = {
     'CNNX': CNNNetwork.CNNX,
@@ -127,6 +127,7 @@ class DataAugmentationEntity:
     channel_swap: bool = False
     random_blank: int = -1
     random_transition: int = -1
+    random_captcha: dict = {"Enable": False, "FontPath": ""}
 
 
 class PretreatmentEntity:
@@ -135,6 +136,7 @@ class PretreatmentEntity:
     blend_frames: object = -1
     replace_transparent: bool = True
     horizontal_stitching: bool = False
+    exec_map: dict = {}
 
 
 class ModelConfig:
@@ -217,6 +219,7 @@ class ModelConfig:
     da_channel_swap: bool
     da_random_blank: int
     da_random_transition: int
+    da_random_captcha: dict = {"Enable": False, "FontPath": ""}
 
     """PRETREATMENT"""
     pretreatment_root: dict
@@ -225,6 +228,7 @@ class ModelConfig:
     pre_horizontal_stitching: bool
     pre_concat_frames: object
     pre_blend_frames: object
+    pre_exec_map = dict = {}
 
     """COMPILE_MODEL"""
     compile_model_path: str
@@ -353,6 +357,9 @@ class ModelConfig:
         self.da_channel_swap = self.data_augmentation_root.get('ChannelSwap')
         self.da_random_blank = self.data_augmentation_root.get('RandomBlank')
         self.da_random_transition = self.data_augmentation_root.get('RandomTransition')
+        self.da_random_captcha = self.data_augmentation_root.get('RandomCaptcha')
+        if not self.da_random_captcha:
+            self.da_random_captcha = {"Enable": False, "FontPath": ""}
 
         """PRETREATMENT"""
         self.pretreatment_root = self.conf['Pretreatment']
@@ -361,6 +368,8 @@ class ModelConfig:
         self.pre_horizontal_stitching = self.pretreatment_root.get("HorizontalStitching")
         self.pre_concat_frames = self.pretreatment_root.get('ConcatFrames')
         self.pre_blend_frames = self.pretreatment_root.get('BlendFrames')
+        self.pre_exec_map = self.pretreatment_root.get('ExecuteMap')
+        self.pre_exec_map = self.pre_exec_map if self.pre_exec_map else {}
 
         """COMPILE_MODEL"""
         self.compile_model_path = os.path.join(self.output_path, 'graph')
@@ -493,6 +502,13 @@ class ModelConfig:
         return result
 
     @staticmethod
+    def dict_param(params: dict, intent=6):
+        if params is None:
+            params = {}
+        result = "".join(["\n{} ".format(' ' * intent) + "{}: {}".format(k, v) for k, v in params.items()])
+        return result
+
+    @staticmethod
     def val_filter(val):
         if isinstance(val, str) and len(val) == 1:
             val = "'{}'".format(val)
@@ -553,11 +569,13 @@ class ModelConfig:
                 DA_ChannelSwap=self.da_channel_swap,
                 DA_RandomBlank=self.da_random_blank,
                 DA_RandomTransition=self.da_random_transition,
+                DA_RandomCaptcha=self.dict_param(self.da_random_captcha, intent=4),
                 Pre_Binaryzation=self.pre_binaryzation,
                 Pre_ReplaceTransparent=self.pre_replace_transparent,
                 Pre_HorizontalStitching=self.pre_horizontal_stitching,
                 Pre_ConcatFrames=self.pre_concat_frames,
                 Pre_BlendFrames=self.pre_blend_frames,
+                Pre_ExecuteMap=self.pre_exec_map
             )
         with open(model_conf_path if model_conf_path else self.model_conf_path, "w", encoding="utf8") as f:
             f.write(model)
@@ -635,11 +653,13 @@ class ModelConfig:
         self.da_channel_swap = argv.get('DA_ChannelSwap')
         self.da_random_blank = argv.get('DA_RandomBlank')
         self.da_random_transition = argv.get('DA_RandomTransition')
+        self.da_random_captcha = argv.get('DA_RandomCaptcha')
         self.pre_binaryzation = argv.get('Pre_Binaryzation')
         self.pre_replace_transparent = argv.get('Pre_ReplaceTransparent')
         self.pre_horizontal_stitching = argv.get('Pre_HorizontalStitching')
         self.pre_concat_frames = argv.get('Pre_ConcatFrames')
         self.pre_blend_frames = argv.get('Pre_BlendFrames')
+        self.pre_exec_map = argv.get('Pre_ExecuteMap')
 
     def println(self):
         print('Loading Configuration...')
